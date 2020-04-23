@@ -149,20 +149,19 @@ func newLibcontainerAdapter(cgroupManagerType libcontainerCgroupManagerType) *li
 func (l *libcontainerAdapter) newManager(cgroups *libcontainerconfigs.Cgroup, paths map[string]string) (libcontainercgroups.Manager, error) {
 	switch l.cgroupManagerType {
 	case libcontainerCgroupfs:
-		return &cgroupfs.Manager{
-			Cgroups: cgroups,
-			Paths:   paths,
-		}, nil
+		if libcontainercgroups.IsCgroup2UnifiedMode() {
+			return cgroupfs2.NewManager(cgroups, paths["memory"], false)
+		}
+		return cgroupfs.NewManager(cgroups, paths, false), nil
 	case libcontainerSystemd:
 		// this means you asked systemd to manage cgroups, but systemd was not on the host, so all you can do is panic...
-		if !cgroupsystemd.UseSystemd() {
+		if !cgroupsystemd.IsRunningSystemd() {
 			panic("systemd cgroup manager not available")
 		}
-		f, err := cgroupsystemd.NewSystemdCgroupsManager()
-		if err != nil {
-			return nil, err
+		if libcontainercgroups.IsCgroup2UnifiedMode() {
+			return cgroupsystemd.NewUnifiedManager(cgroups, paths["memory"], false), nil
 		}
-		return f(cgroups, paths), nil
+		return cgroupsystemd.NewLegacyManager(cgroups, paths), nil
 	}
 	return nil, fmt.Errorf("invalid cgroup manager configuration")
 }
@@ -323,7 +322,11 @@ func (m *cgroupManagerImpl) Destroy(cgroupConfig *CgroupConfig) error {
 	if m.adapter.cgroupManagerType == libcontainerSystemd {
 		updateSystemdCgroupInfo(libcontainerCgroupConfig, cgroupConfig.Name)
 	} else {
-		libcontainerCgroupConfig.Path = cgroupConfig.Name.ToCgroupfs()
+		if libcontainercgroups.IsCgroup2UnifiedMode() {
+			libcontainerCgroupConfig.Path = m.buildCgroupUnifiedPath(cgroupConfig.Name)
+		} else {
+			libcontainerCgroupConfig.Path = cgroupConfig.Name.ToCgroupfs()
+		}
 	}
 
 	manager, err := m.adapter.newManager(libcontainerCgroupConfig, cgroupPaths)
@@ -500,8 +503,15 @@ func setResourcesV2(cgroupConfig *libcontainerconfigs.Cgroup) error {
 	if err := propagateControllers(cgroupConfig.Path); err != nil {
 		return err
 	}
-	allowAll := true
-	cgroupConfig.Resources.AllowAllDevices = &allowAll
+	cgroupConfig.Resources.Devices = []*libcontainerconfigs.DeviceRule{
+		{
+			Type:        'a',
+			Permissions: "rwm",
+			Allow:       true,
+			Minor:       libcontainerconfigs.Wildcard,
+			Major:       libcontainerconfigs.Wildcard,
+		},
+	}
 
 	manager, err := cgroupfs2.NewManager(cgroupConfig, cgroupConfig.Path, false)
 	if err != nil {
@@ -514,7 +524,17 @@ func setResourcesV2(cgroupConfig *libcontainerconfigs.Cgroup) error {
 }
 
 func (m *cgroupManagerImpl) toResources(resourceConfig *ResourceConfig) *libcontainerconfigs.Resources {
-	resources := &libcontainerconfigs.Resources{}
+	resources := &libcontainerconfigs.Resources{
+		Devices: []*libcontainerconfigs.DeviceRule{
+			{
+				Type:        'a',
+				Permissions: "rwm",
+				Allow:       true,
+				Minor:       libcontainerconfigs.Wildcard,
+				Major:       libcontainerconfigs.Wildcard,
+			},
+		},
+	}
 	if resourceConfig == nil {
 		return resources
 	}
@@ -594,8 +614,6 @@ func (m *cgroupManagerImpl) Update(cgroupConfig *CgroupConfig) error {
 	// depending on the cgroup driver in use, so we need this conditional here.
 	if m.adapter.cgroupManagerType == libcontainerSystemd {
 		updateSystemdCgroupInfo(libcontainerCgroupConfig, cgroupConfig.Name)
-	} else {
-		libcontainerCgroupConfig.Path = cgroupConfig.Name.ToCgroupfs()
 	}
 
 	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportPodPidsLimit) && cgroupConfig.ResourceParameters != nil && cgroupConfig.ResourceParameters.PidsLimit != nil {
@@ -631,7 +649,11 @@ func (m *cgroupManagerImpl) Create(cgroupConfig *CgroupConfig) error {
 	if m.adapter.cgroupManagerType == libcontainerSystemd {
 		updateSystemdCgroupInfo(libcontainerCgroupConfig, cgroupConfig.Name)
 	} else {
-		libcontainerCgroupConfig.Path = cgroupConfig.Name.ToCgroupfs()
+		if libcontainercgroups.IsCgroup2UnifiedMode() {
+			libcontainerCgroupConfig.Path = m.buildCgroupUnifiedPath(cgroupConfig.Name)
+		} else {
+			libcontainerCgroupConfig.Path = cgroupConfig.Name.ToCgroupfs()
+		}
 	}
 
 	if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.SupportPodPidsLimit) && cgroupConfig.ResourceParameters != nil && cgroupConfig.ResourceParameters.PidsLimit != nil {
