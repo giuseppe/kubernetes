@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	libcontainercgroups "github.com/opencontainers/runc/libcontainer/cgroups"
+	libcontainercgroupv1 "github.com/opencontainers/runc/libcontainer/cgroups/cgroupv1"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -187,7 +188,7 @@ func ResourceConfigForPod(pod *v1.Pod, enforceCPULimits bool, cpuPeriod uint64) 
 // getCgroupSubsystemsV1 returns information about the mounted cgroup v1 subsystems
 func getCgroupSubsystemsV1() (*CgroupSubsystems, error) {
 	// get all cgroup mounts.
-	allCgroups, err := libcontainercgroups.GetCgroupMounts(true)
+	allCgroups, err := libcontainercgroupv1.GetCgroupMounts(true)
 	if err != nil {
 		return &CgroupSubsystems{}, err
 	}
@@ -213,12 +214,12 @@ func getCgroupSubsystemsV2() (*CgroupSubsystems, error) {
 		return nil, err
 	}
 
-	mounts := []libcontainercgroups.Mount{}
+	mounts := []libcontainercgroupv1.Mount{}
 	controllers := strings.Fields(string(content))
 	mountPoints := make(map[string]string, len(controllers))
 	for _, controller := range controllers {
 		mountPoints[controller] = util.CgroupRoot
-		m := libcontainercgroups.Mount{
+		m := libcontainercgroupv1.Mount{
 			Mountpoint: util.CgroupRoot,
 			Root:       util.CgroupRoot,
 			Subsystems: []string{controller},

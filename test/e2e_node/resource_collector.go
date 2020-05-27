@@ -19,6 +19,7 @@ limitations under the License.
 package e2enode
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -509,22 +510,60 @@ func getContainerNameForProcess(name, pidFile string) (string, error) {
 	return cont, nil
 }
 
+func parseCgroupFile(path string) (map[string]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	s := bufio.NewScanner(f)
+	cgroups := make(map[string]string)
+
+	for s.Scan() {
+		text := s.Text()
+		// from cgroups(7):
+		// /proc/[pid]/cgroup
+		// ...
+		// For each cgroup hierarchy ... there is one entry
+		// containing three colon-separated fields of the form:
+		//     hierarchy-ID:subsystem-list:cgroup-path
+		parts := strings.SplitN(text, ":", 3)
+		if len(parts) < 3 {
+			return nil, fmt.Errorf("invalid cgroup entry: must contain at least two colons: %v", text)
+		}
+
+		for _, subs := range strings.Split(parts[1], ",") {
+			cgroups[subs] = parts[2]
+		}
+	}
+	if err := s.Err(); err != nil {
+		return nil, err
+	}
+
+	return cgroups, nil
+}
+
 // getContainer returns the cgroup associated with the specified pid.
 // It enforces a unified hierarchy for memory and cpu cgroups.
 // On systemd environments, it uses the name=systemd cgroup for the specified pid.
 func getContainer(pid int) (string, error) {
-	cgs, err := cgroups.ParseCgroupFile(fmt.Sprintf("/proc/%d/cgroup", pid))
+	cgs, err := parseCgroupFile(fmt.Sprintf("/proc/%d/cgroup", pid))
 	if err != nil {
 		return "", err
 	}
 
+	if cgroups.IsCgroup2UnifiedMode() {
+		return cgs[""], nil
+	}
+
 	cpu, found := cgs["cpu"]
 	if !found {
-		return "", cgroups.NewNotFoundError("cpu")
+		return "", fmt.Errorf("mountpoint for cpu not found")
 	}
 	memory, found := cgs["memory"]
 	if !found {
-		return "", cgroups.NewNotFoundError("memory")
+		return "", fmt.Errorf("mountpoint for memory not found")
 	}
 
 	// since we use this container for accounting, we need to ensure it is a unified hierarchy.

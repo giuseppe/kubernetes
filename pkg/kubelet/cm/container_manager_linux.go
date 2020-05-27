@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
+	cgroupv1 "github.com/opencontainers/runc/libcontainer/cgroups/cgroupv1"
 	cgroupfs "github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	cgroupfs2 "github.com/opencontainers/runc/libcontainer/cgroups/fs2"
 	"github.com/opencontainers/runc/libcontainer/configs"
@@ -909,7 +910,7 @@ func ensureProcessInContainerWithOOMScore(pid int, oomScoreAdj int, manager cgro
 // It enforces a unified hierarchy for memory and cpu cgroups.
 // On systemd environments, it uses the name=systemd cgroup for the specified pid.
 func getContainer(pid int) (string, error) {
-	cgs, err := cgroups.ParseCgroupFile(fmt.Sprintf("/proc/%d/cgroup", pid))
+	cgs, err := cgroupv1.ParseCgroupFile(fmt.Sprintf("/proc/%d/cgroup", pid))
 	if err != nil {
 		return "", err
 	}
@@ -921,11 +922,11 @@ func getContainer(pid int) (string, error) {
 
 	cpu, found := cgs["cpu"]
 	if !found {
-		return "", cgroups.NewNotFoundError("cpu")
+		return "", fmt.Errorf("mountpoint for cpu not found")
 	}
 	memory, found := cgs["memory"]
 	if !found {
-		return "", cgroups.NewNotFoundError("memory")
+		return "", fmt.Errorf("mountpoint for memory not found")
 	}
 
 	// since we use this container for accounting, we need to ensure its a unified hierarchy.
