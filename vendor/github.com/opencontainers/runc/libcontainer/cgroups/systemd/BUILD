@@ -26,6 +26,7 @@ go_library(
             "//vendor/github.com/opencontainers/runc/libcontainer/cgroups/fs:go_default_library",
             "//vendor/github.com/opencontainers/runc/libcontainer/cgroups/fs2:go_default_library",
             "//vendor/github.com/opencontainers/runc/libcontainer/system:go_default_library",
+            "//vendor/golang.org/x/sys/unix:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:darwin": [
             "//vendor/github.com/opencontainers/runc/libcontainer/cgroups:go_default_library",
@@ -45,6 +46,7 @@ go_library(
             "//vendor/github.com/opencontainers/runc/libcontainer/cgroups/fs:go_default_library",
             "//vendor/github.com/opencontainers/runc/libcontainer/cgroups/fs2:go_default_library",
             "//vendor/github.com/opencontainers/runc/libcontainer/system:go_default_library",
+            "//vendor/golang.org/x/sys/unix:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:nacl": [
             "//vendor/github.com/opencontainers/runc/libcontainer/cgroups:go_default_library",

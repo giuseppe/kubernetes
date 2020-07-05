@@ -205,7 +205,7 @@ github.com/checkpoint-restore/go-criu/v4/rpc
 # github.com/chzyer/logex => github.com/chzyer/logex v1.1.10
 # github.com/chzyer/readline => github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 # github.com/chzyer/test => github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1
-# github.com/cilium/ebpf v0.0.0-20200601085316-9f1617e5c574 => github.com/cilium/ebpf v0.0.0-20200601085316-9f1617e5c574
+# github.com/cilium/ebpf v0.0.0-20200702112145-1c8d4c9ef775 => github.com/cilium/ebpf v0.0.0-20200601085316-9f1617e5c574
 github.com/cilium/ebpf
 # github.com/cilium/ebpf => github.com/cilium/ebpf v0.0.0-20200601085316-9f1617e5c574
 github.com/cilium/ebpf/asm
@@ -868,9 +868,9 @@ github.com/opencontainers/go-digest
 # github.com/opencontainers/image-spec => github.com/opencontainers/image-spec v1.0.1
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/opencontainers/runc v1.0.0-rc90.0.20200624011356-1b94395c0657 => github.com/opencontainers/runc v1.0.0-rc90.0.20200624011356-1b94395c0657
+# github.com/opencontainers/runc v1.0.0-rc90.0.20200624011356-1b94395c0657 => github.com/giuseppe/runc v0.0.10-0.20200705143901-7b6d8279e545
 ## explicit
-# github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc90.0.20200624011356-1b94395c0657
+# github.com/opencontainers/runc => github.com/giuseppe/runc v0.0.10-0.20200705143901-7b6d8279e545
 github.com/opencontainers/runc/libcontainer
 github.com/opencontainers/runc/libcontainer/apparmor
 github.com/opencontainers/runc/libcontainer/cgroups

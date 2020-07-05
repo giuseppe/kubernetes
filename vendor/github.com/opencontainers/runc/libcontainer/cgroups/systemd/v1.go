@@ -15,6 +15,7 @@ import (
 	"github.com/opencontainers/runc/libcontainer/cgroups/fs"
 	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 )
 
 type legacyManager struct {
@@ -222,7 +223,16 @@ func (m *legacyManager) Destroy() error {
 		return err
 	}
 	unitName := getUnitName(m.cgroups)
-	if err := stopUnit(dbusConnection, unitName); err != nil {
+
+	err = stopUnit(dbusConnection, unitName)
+	// Both on success and on error, cleanup all the cgroups we are aware of.
+	// Some of them were created directly by Apply() and are not managed by systemd.
+	for _, path := range m.paths {
+		if err := unix.Rmdir(path); err != nil && err != unix.ENOENT {
+			return err
+		}
+	}
+	if err != nil {
 		return err
 	}
 	m.paths = make(map[string]string)
